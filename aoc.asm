@@ -8,6 +8,7 @@ extern __imp_IoDeleteDevice
 extern __imp_IoDeleteSymbolicLink
 
 extern __imp_IoCompleteRequest
+
 ;extern __imp_RtlInitUnicodeString
 
 ; ============================================================
@@ -62,8 +63,8 @@ align 64
 	;LinkNameBuf: dw word 34, word 34, dword 0, __utf16__("\DosDevices\MyDrv"), 0
 	;LinkNameBuf: dw __utf16__("\DosDevices\MyDrv"), 0
 
-	IOCTL_READ_MSR:	equ 0x80002000
-	IOCTL_WRITE_MSR: equ 0x80002004
+IOCTL_READ_MSR:	equ 0x80002000
+IOCTL_WRITE_MSR: equ 0x80002004
 
 section .text
 
@@ -139,18 +140,47 @@ DispatchControl:
 	; Irp->AssociatedIrp.SystemBuffer
 	mov	r9, [rdx + 0x18]
 
+	; 1. システムバッファのヌルチェック
+	test r9, r9
+	jz   .invalid_parameter
+
+	; 2. バッファサイズのチェック (InputBufferLength: r8 + 0x10)
+	; MSRアドレス(4B) + 値(8B) = 最低12バイト必要
+	mov  r11d, [r8 + 0x10]
+	cmp  r11d, 12
+	jb   .buffer_too_small
+
+	mov ecx, [r9]
+
+	cmp ecx, 0xC0010064
+
+	jne .access_denied
+	
 	cmp	eax, IOCTL_READ_MSR
 	je	.read_msr
 	cmp	eax, IOCTL_WRITE_MSR
 	je	.write_msr
 
+.invalid_device_request:
 	; 未対応IOCTL
 	mov	eax, 0xC0000010		; STATUS_INVALID_DEVICE_REQUEST
 	jmp	.complete
 
+.invalid_parameter:
+	mov  eax, 0xC000000D		; STATUS_INVALID_PARAMETER
+	jmp  .complete
+
+.buffer_too_small:
+	mov  eax, 0xC0000023		; STATUS_BUFFER_TOO_SMALL
+	jmp  .complete
+
+.access_denied:
+	mov  eax, 0xC0000022		; STATUS_ACCESS_DENIED
+	jmp  .complete
+
 .read_msr:
 	; SystemBuffer = { UINT32 address, UINT32 pad, UINT64 value }
-	mov	ecx, [r9]			  ; MSRアドレス
+	;mov	ecx, [r9]			  ; MSRアドレス
 	rdmsr						  ; edx:eax = MSR値
 	shl	rdx, 32
 	or	 rax, rdx
@@ -159,10 +189,11 @@ DispatchControl:
 	jmp	.complete
 
 .write_msr:
-	mov	ecx, [r9]			  ; MSRアドレス
+	;mov	ecx, [r9]			  ; MSRアドレス
 	mov	rax, [r9 + 8]		  ; 書き込む値
 	mov	rdx, rax
 	shr	rdx, 32				; edx:eax に分割
+	mov eax, eax
 	wrmsr
 	xor	eax, eax
 	jmp	.complete
