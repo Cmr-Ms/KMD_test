@@ -8,6 +8,7 @@ extern __imp_IoDeleteDevice
 extern __imp_IoDeleteSymbolicLink
 
 extern __imp_IoCompleteRequest
+;extern __imp_RtlInitUnicodeString
 
 ; ============================================================
 ; DECLARE_UNICODE_STRING マクロ
