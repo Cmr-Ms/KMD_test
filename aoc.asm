@@ -25,13 +25,13 @@ extern __imp_IoCompleteRequest
     %%max_bytes_len   equ (%%str_len + 1) * 2  ; 終端ヌルを含めた最大サイズ
 
     section .rdata
-    align 64
+    align 2
     ;; 文字列本体のバッファを一意のラベルで定義
     %%str_buf_label:
         dw __utf16__(%2), 0
 
     section .data
-    align 64
+    align 16
     ;; 外部から参照される構造体のメインラベル
     %1:
         dw %%bytes_len          ; +0x00: Length (2バイト)
@@ -45,14 +45,14 @@ DECLARE_UNICODE_STRING LinkName,   "\DosDevices\MyDrv"
 
 ; IoCreateDeviceが書き込むポインタ
 section .data
-align 64
+align 8
 	DeviceObject:	dq 0
 	;__dummy_abs:	dq DriverEntry
 	;DeviceName:	times 64 db 0
 	;LinkName: times 64 db 0
 
-section .rdata
-align 64
+;section .rdata
+;align 64
 ; \\Device\\MyDrv
 ;DeviceNameBuf:  dw   '\','D','e','v','i','c','e','\','M','y','D','r','v',0
 	;DeviceNameBuf:	dw word 26, word 26, dword 0, __utf16__("\Device\MyDrv"), 0
