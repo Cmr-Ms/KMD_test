@@ -147,8 +147,11 @@ DispatchControl:
 	; 2. バッファサイズのチェック (InputBufferLength: r8 + 0x10)
 	; MSRアドレス(4B) + 値(8B) = 最低12バイト必要
 	mov  r11d, [r8 + 0x10]
-	cmp  r11d, 12
+	cmp  r11d, 16
 	jb   .buffer_too_small
+	mov  r11d, [r8 + 0x08]      ; OutputBufferLength
+    cmp  r11d, 16
+    jb   .buffer_too_small
 
 	mov ecx, [r9]
 
@@ -201,7 +204,7 @@ DispatchControl:
 .complete:
 	mov	r10, [rsp + 30h]		; IRP復元
 	mov	[r10 + 0x30], eax	  ; IoStatus.Status
-	mov	qword [r10 + 0x38], 8   ; IoStatus.Information = sizeof(Value)
+	mov	qword [r10 + 0x38], 16   ; IoStatus.Information = sizeof(Value)
 	mov	rcx, r10
 	xor	edx, edx
 	call	[__imp_IoCompleteRequest]
@@ -282,23 +285,23 @@ DriverEntry:
 	test	eax, eax
 	js	 .fail
 
-
+	
 
 	xor	eax, eax
 	jmp	.done
 
 .fail:
-	;mov	r11d, eax
+	mov	r11d, eax
 	;lea rcx, [DeviceObject]
 	mov	rcx, [DeviceObject]
 	test	rcx, rcx
 
-	jz .done
+	jz .skip_delete
 	call	[__imp_IoDeleteDevice]
 	;mov		qword [DeviceObject], 0
 
-;.skip_delete:
-	;mov	eax, r11d
+.skip_delete:
+	mov	eax, r11d
 
 .done:
 	add	rsp, 78h
